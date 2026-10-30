@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>中央廚房｜手機條碼掃描</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,"Noto Sans TC",sans-serif;background:#f5f7f4;margin:0;padding:18px;color:#234232}
+main{max-width:480px;margin:auto}
+h1{text-align:center;font-size:25px}
+.card{background:white;border-radius:16px;padding:18px;margin:16px 0}
+button{width:100%;background:#28674c;color:white;border:0;border-radius:12px;padding:16px;font-size:18px;font-weight:bold;margin:6px 0}
+.secondary{background:#e5eee8;color:#28503b}
+#reader{width:100%;overflow:hidden}
+#result{text-align:center;font-size:26px;font-weight:bold;overflow-wrap:anywhere}
+#status{text-align:center}
+</style>
+</head>
+<body>
+<main>
+<h1>📷 中央廚房條碼掃描</h1>
+<p>用手機後鏡頭對準商品條碼，不用拍照。</p>
+<div class="card">
+<button id="start" onclick="startScan()">開啟相機掃碼</button>
+<button class="secondary" onclick="stopScan()">停止相機</button>
+<div id="reader"></div>
+<p id="status">請按「開啟相機掃碼」</p>
+</div>
+<div class="card">
+<p>掃描結果</p>
+<div id="result">尚未掃描</div>
+<button class="secondary" onclick="copyCode()">複製條碼號碼</button>
+</div>
+<p style="font-size:13px;color:#777">目前僅測試掃碼，不會變更庫存資料。</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+let scanner=null,running=false,lastCode="";
+const statusEl=document.getElementById("status");
+const resultEl=document.getElementById("result");
+async function startScan(){
+  if(running)return;
+  const btn=document.getElementById("start");
+  btn.disabled=true;
+  statusEl.textContent="正在開啟相機……";
+  try{
+    if(typeof Html5Qrcode==="undefined")throw Error("掃碼程式載入失敗");
+    scanner=new Html5Qrcode("reader",{
+      formatsToSupport:[
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A
+      ]
+    });
+    await scanner.start(
+      {facingMode:"environment"},
+      {fps:10},
+      function(code){
+        if(!/^(?:\d{8}|\d{12}|\d{13})$/.test(code))return;
+        if(code===lastCode)return;
+        lastCode=code;
+        resultEl.textContent=code;
+        statusEl.textContent="✅ 掃描成功";
+        stopScan();
+      },
+      function(){}
+    );
+    running=true;
+    if(!lastCode)statusEl.textContent="請把條碼放在鏡頭中央";
+  }catch(e){
+    statusEl.textContent="無法開啟相機："+(e.message||e);
+  }finally{btn.disabled=false}
+}
+async function stopScan(){
+  if(scanner&&running){
+    try{await scanner.stop()}catch(e){}
+    running=false;
+  }
+}
+async function copyCode(){
+  if(!lastCode){alert("請先掃描條碼");return}
+  try{
+    await navigator.clipboard.writeText(lastCode);
+    alert("條碼已複製："+lastCode);
+  }catch(e){alert("條碼："+lastCode)}
+}
+</script>
+</body>
+</html>
